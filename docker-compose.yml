@@ -1,0 +1,68 @@
+version: '3.3'
+
+services:
+  wordpress:
+    build:
+      context: .
+      dockerfile: Dockerfile.wordpress 
+    volumes:
+      - ./wp-content/themes:/var/www/html/wp-content/themes
+      - ./wp-content/plugins:/var/www/html/wp-content/plugins
+      - wp_data:/var/www/html
+    depends_on:
+      - mariadb
+    ports:
+      - 80:80
+    environment:
+      WORDPRESS_DB_HOST: mariadb
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+      WORDPRESS_DB_NAME: wordpress  
+      WORDPRESS_DB_PORT: 3306  
+      WORDPRESS_TABLE_PREFIX: 'wp_'
+      WORDPRESS_DEBUG: 1
+      WP_HOME: http://wordpress.local
+      WP_SITEURL: http://wordpress.local
+    restart: on-failure
+
+  mariadb:
+    image: mariadb
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_ROOT_PASSWORD:
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wordpress
+      MYSQL_RANDOM_ROOT_PASSWORD: 'true'
+    restart: on-failure
+    volumes:
+      - db_data:/var/lib/mysql
+
+  adminer:
+    depends_on:
+      - mariadb
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
+    environment:
+      ADMINER_DEFAULT_SERVER: mariadb
+
+  wordpress-cli:
+    depends_on:
+      - mariadb
+      - wordpress
+    image: wordpress:cli
+    user: www-data
+    command: >
+      /bin/sh -c '
+      sleep 20;
+      wp core install --path='/var/www/html' --url='http://wordpress.local' --title='Docker-Wordpress' --admin_user=admin --admin_password=secret --admin_email=foo@bar.com
+      '
+    volumes:
+      - wp_data:/var/www/html
+
+volumes:
+  db_data:
+  wp_data:
